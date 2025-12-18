@@ -1,6 +1,6 @@
 # 📝 TaskBoard – Todo List Web App
 
-TaskBoard is a frontend-only To-Do List web application inspired by Todoist and Apple Reminders. It is built using only HTML, CSS, and Vanilla JavaScript, without any backend or database. The application is fully responsive and works seamlessly on both mobile and desktop devices.
+TaskBoard is a frontend-only To-Do List web application. It is built using only HTML, CSS, and Vanilla JavaScript, without any backend or database. The application is fully responsive and works seamlessly on both mobile and desktop devices.
 
 🌐 Live Demo:  
 https://ranackayisli.github.io/todolist/
