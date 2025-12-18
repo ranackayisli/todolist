@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>TaskBoard</title>
+
+    <style>
+        :root{
+          --bg:#0b1020;
+          --stroke:rgba(255,255,255,.10);
+          --text:#e9eeff;
+          --muted:#9aa6c3;
+          --brand:#5b7cfa;
+          --danger:#ff5b6e;
+          --shadow:0 18px 50px rgba(0,0,0,.45);
+          --r:18px;
+          --sidebarSolid: rgba(15, 23, 51, 0.98);
+        }
+        *{box-sizing:border-box}
+        body{
+          margin:0;
+          font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+          background:
+            radial-gradient(900px 600px at 20% 10%, rgba(91,124,250,.25), transparent 60%),
+            radial-gradient(700px 500px at 80% 0%, rgba(255,91,110,.18), transparent 60%),
+            var(--bg);
+          color:var(--text);
+          min-height:100vh;
+        }
+        body.menu-open{
+          overflow:hidden;
+          touch-action:none;
+        }
+
+        .backdrop{
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,.70);
+          z-index: 998;
+          display: none;
+        }
+        .backdrop.show{ display:block; }
+
+        .shell{
+          width:min(1100px, 96vw);
+          margin:24px auto;
+          display:grid;
+          grid-template-columns: 280px 1fr;
+          gap:16px;
+        }
+
+        .sidebar, .main{
+          border:1px solid var(--stroke);
+          background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+          border-radius:var(--r);
+          box-shadow:var(--shadow);
+          overflow:hidden;
+        }
+
+        /* Sidebar */
+        .sb-top{
+          padding:14px 14px 10px;
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          border-bottom:1px solid var(--stroke);
+          background:rgba(0,0,0,.18);
+        }
+        .brand{
+          display:flex; align-items:center; gap:10px;
+          font-weight:900;
+          letter-spacing:.2px;
+        }
+        .dot{
+          width:10px;height:10px;border-radius:999px;background:var(--brand);
+          box-shadow:0 0 0 4px rgba(91,124,250,.18);
+        }
+        .pill{
+          font-size:12px;
+          padding:4px 8px;
+          border-radius:999px;
+          border:1px solid var(--stroke);
+          background:rgba(0,0,0,.16);
+          color:var(--muted);
+        }
+
+        .sb{
+          padding:12px;
+          display:flex;
+          flex-direction:column;
+          gap:12px;
+          min-height: 520px;
+        }
+
+        .sb-search{
+          display:flex; gap:8px;
+          padding:10px;
+          border:1px solid var(--stroke);
+          border-radius:14px;
+          background:rgba(0,0,0,.18);
+        }
+        .sb-search input{
+          width:100%;
+          background:transparent;
+          border:0;
+          outline:none;
+          color:var(--text);
+        }
+        .sb-search input::placeholder{color:rgba(233,238,255,.45)}
+
+        .sb-group-title{
+          color:var(--muted);
+          font-size:12px;
+          letter-spacing:.08em;
+          text-transform:uppercase;
+          margin-top:2px;
+        }
+
+        .sb-list{
+          display:flex;
+          flex-direction:column;
+          gap:6px;
+        }
+
+        .sb-item{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:10px;
+          padding:10px 10px;
+          border-radius:14px;
+          cursor:pointer;
+          border:1px solid transparent;
+          color:rgba(233,238,255,.88);
+          user-select:none;
+        }
+        .sb-item:hover{
+          background:rgba(255,255,255,.04);
+          border-color:rgba(255,255,255,.08);
+        }
+        .sb-item.active{
+          background:rgba(91,124,250,.18);
+          border-color:rgba(91,124,250,.35);
+        }
+
+        .sb-actions{
+          display:flex; gap:8px; margin-top:4px;
+        }
+        .btn{
+          border:1px solid var(--stroke);
+          background:rgba(0,0,0,.18);
+          color:var(--text);
+          padding:10px 12px;
+          border-radius:14px;
+          cursor:pointer;
+          font-weight:800;
+        }
+        .btn.primary{ border:0; background:var(--brand); color:#fff; }
+        .btn.danger{
+          border:1px solid rgba(255,91,110,.35);
+          background:rgba(255,91,110,.10);
+          color:#ffdbe0;
+        }
+        .btn:active{transform:translateY(1px)}
+
+        /* Main */
+        .main-head{
+          padding:14px 16px;
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+          border-bottom:1px solid var(--stroke);
+          background:rgba(0,0,0,.18);
+        }
+
+        .leftHead{
+          display:flex;
+          align-items:center;
+          gap:10px;
+          min-width: 180px;
+        }
+
+        .menuBtn{
+          display:none;
+          border:1px solid var(--stroke);
+          background:rgba(0,0,0,.18);
+          color:var(--text);
+          padding:10px 12px;
+          border-radius:14px;
+          cursor:pointer;
+          font-weight:900;
+          line-height:1;
+        }
+
+        .title-wrap{ display:flex; flex-direction:column; gap:4px; }
+        .title{ font-size:18px; font-weight:900; margin:0; letter-spacing:.2px; }
+        .subtitle{ color:var(--muted); font-size:13px; }
+
+        .head-right{
+          display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+          justify-content:flex-end;
+        }
+
+        .filters{
+          display:flex;
+          gap:6px;
+          background: rgba(0,0,0,.14);
+          border:1px solid var(--stroke);
+          padding:6px;
+          border-radius:14px;
+          flex-wrap:wrap;
+        }
+        .chip{
+          border:0;
+          background:transparent;
+          color:var(--muted);
+          padding:8px 10px;
+          border-radius:12px;
+          cursor:pointer;
+          font-weight:900;
+          font-size:13px;
+          white-space:nowrap;
+        }
+        .chip.active{
+          background: rgba(91,124,250,.22);
+          color: var(--text);
+        }
+
+        .content{ padding:14px 16px 18px; }
+
+        .addbar{
+          display:flex; gap:10px; flex-wrap:wrap;
+          padding:12px;
+          border:1px solid var(--stroke);
+          border-radius:16px;
+          background:rgba(0,0,0,.16);
+          margin-bottom:12px;
+        }
+        .addbar input, .addbar select, .addbar input[type="date"]{
+          border:1px solid var(--stroke);
+          background:rgba(0,0,0,.16);
+          color:var(--text);
+          padding:10px 12px;
+          border-radius:14px;
+          outline:none;
+          width:auto;
+        }
+        .addbar input{flex:1; min-width: 220px;}
+        .addbar select{min-width: 150px;}
+        .addbar input[type="date"]{min-width: 150px;}
+
+        .section{ margin-top:14px; }
+        .section-title{
+          display:flex; align-items:center; justify-content:space-between;
+          margin:14px 2px 10px;
+          color:rgba(233,238,255,.92);
+          font-weight:900;
+        }
+        .hint{color:var(--muted); font-weight:800; font-size:12px}
+
+        ul.tasks{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;}
+        .task{
+          display:flex;
+          align-items:flex-start;
+          gap:10px;
+          padding:12px 12px;
+          border-radius:16px;
+          border:1px solid var(--stroke);
+          background:rgba(0,0,0,.14);
+        }
+        .task.done{opacity:.9}
+        .check{width:18px;height:18px; accent-color:var(--brand); cursor:pointer; margin-top:2px;}
+        .task-mid{flex:1; min-width: 0;}
+        .task-title{
+          margin:0;
+          font-weight:900;
+          line-height:1.25;
+          word-break:break-word;
+        }
+        .task.done .task-title{
+          text-decoration:line-through;
+          color:rgba(233,238,255,.55);
+        }
+        .meta{
+          display:flex; gap:8px; flex-wrap:wrap;
+          margin-top:6px;
+          color:var(--muted);
+          font-size:12px;
+          font-weight:800;
+        }
+        .tag{
+          border:1px solid var(--stroke);
+          background:rgba(0,0,0,.14);
+          padding:4px 8px;
+          border-radius:999px;
+        }
+
+        .task-actions{display:flex; gap:8px; flex-wrap:wrap;}
+        .iconBtn{
+          border:1px solid var(--stroke);
+          background:rgba(0,0,0,.16);
+          color:var(--text);
+          padding:8px 10px;
+          border-radius:12px;
+          cursor:pointer;
+          font-weight:900;
+          font-size:13px;
+          white-space:nowrap;
+        }
+
+        .footer{
+          margin-top:14px;
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          color:var(--muted);
+          font-size:13px;
+          gap:10px;
+          flex-wrap:wrap;
+        }
+
+        /* ✅ MOBILE */
+        @media (max-width: 920px){
+          .shell{
+            grid-template-columns: 1fr;
+            width: min(980px, 94vw);
+            margin: 16px auto;
+          }
+
+          .menuBtn{ display:inline-flex; align-items:center; justify-content:center; }
+
+          /* Sidebar: soldan opak drawer */
+          .sidebar{
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: min(360px, 86vw);
+            z-index: 999;
+            transform: translateX(-110%);
+            transition: transform .25s ease;
+            border-radius: 0 18px 18px 0;
+            background: var(--sidebarSolid);
+            box-shadow: 0 30px 80px rgba(0,0,0,.65);
+            overflow-y:auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          .sidebar.open{ transform: translateX(0); }
+
+          /* Header stack */
+          .main-head{
+            flex-direction:column;
+            align-items:stretch;
+          }
+          .leftHead{ width:100%; }
+          .head-right{ width:100%; justify-content:flex-start; }
+          #clearDoneBtn{ width:100%; }
+
+          /* Addbar full width */
+          .addbar input,
+          .addbar select,
+          .addbar input[type="date"],
+          #addTaskBtn{
+            width:100%;
+            min-width:0;
+          }
+        }
+    </style>
+</head>
+
+<body>
+<div class="backdrop" id="backdrop"></div>
+
+<div class="shell">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sb-top">
+            <div class="brand"><span class="dot"></span> TaskBoard</div>
+            <span class="pill" id="sbTotal">0</span>
+        </div>
+
+        <div class="sb">
+            <div class="sb-search">
+                <input id="searchInput" placeholder="Ara (başlığa göre)..." />
+            </div>
+
+            <div>
+                <div class="sb-group-title">Görünüm</div>
+                <div class="sb-list" id="viewList"></div>
+            </div>
+
+            <div>
+                <div class="sb-group-title">Projeler</div>
+                <div class="sb-list" id="projectList"></div>
+
+                <div class="sb-actions">
+                    <button class="btn primary" id="addProjectBtn" type="button">+ Proje</button>
+                    <button class="btn danger" id="deleteProjectBtn" type="button">Sil</button>
+                </div>
+            </div>
+
+            <div style="margin-top:auto; opacity:.9">
+                <div class="sb-group-title">İpucu</div>
+                <div style="color:var(--muted); font-size:13px; line-height:1.35">
+                    • Menü: üstteki ☰ ile aç/kapat.
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <section class="main">
+        <div class="main-head">
+            <div class="leftHead">
+                <button class="menuBtn" id="menuBtn" type="button" aria-label="Menü">☰</button>
+                <div class="title-wrap">
+                    <h1 class="title" id="mainTitle">Inbox</h1>
+                    <div class="subtitle" id="mainSubtitle">Bugün neler var?</div>
+                </div>
+            </div>
+
+            <div class="head-right">
+                <div class="filters">
+                    <button class="chip active" data-filter="all" type="button">Hepsi</button>
+                    <button class="chip" data-filter="active" type="button">Aktif</button>
+                    <button class="chip" data-filter="done" type="button">Tamam</button>
+                </div>
+                <button class="btn danger" id="clearDoneBtn" type="button">Tamamlananları Temizle</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="addbar">
+                <input id="taskInput" maxlength="90" placeholder="Yeni görev yaz..." />
+                <select id="sectionSelect">
+                    <option value="General">General</option>
+                    <option value="This week">This week</option>
+                    <option value="Important">Important</option>
+                </select>
+                <input id="dueInput" type="date" />
+                <button class="btn primary" id="addTaskBtn" type="button">Ekle</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">
+                    <span id="secTitle">Görevler</span>
+                    <span class="hint" id="countHint">0 görev</span>
+                </div>
+                <ul class="tasks" id="taskList"></ul>
+            </div>
+
+            <div class="footer">
+                <span id="footerStats">0 toplam • 0 aktif • 0 tamam</span>
+                <span>Özgül Rana Çokkayışlı - ToDoList</span>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+    // iOS uyumlu UUID
+    function uuid() {
+      if (crypto?.randomUUID) return crypto.randomUUID();
+      const buf = new Uint8Array(16);
+      crypto.getRandomValues(buf);
+      buf[6] = (buf[6] & 0x0f) | 0x40;
+      buf[8] = (buf[8] & 0x3f) | 0x80;
+      const hex = [...buf].map(b => b.toString(16).padStart(2,'0')).join('');
+      return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+    }
+
+    const STORAGE_KEY = "rana_taskboard_v4";
+
+    const state = loadState() ?? {
+      projects: [
+        { id: "inbox", name: "Inbox", fixed: true },
+        { id: uuid(), name: "Personal", fixed: false },
+        { id: uuid(), name: "School", fixed: false },
+      ],
+      tasks: [],
+      selectedProjectId: "inbox",
+      viewMode: "project", // project | today | upcoming
+      filter: "all",
+      search: ""
+    };
+
+    // Elements
+    const viewListEl = document.getElementById("viewList");
+    const projectListEl = document.getElementById("projectList");
+    const sbTotalEl = document.getElementById("sbTotal");
+
+    const mainTitleEl = document.getElementById("mainTitle");
+    const mainSubtitleEl = document.getElementById("mainSubtitle");
+
+    const taskInput = document.getElementById("taskInput");
+    const sectionSelect = document.getElementById("sectionSelect");
+    const dueInput = document.getElementById("dueInput");
+    const addTaskBtn = document.getElementById("addTaskBtn");
+    const taskListEl = document.getElementById("taskList");
+    const clearDoneBtn = document.getElementById("clearDoneBtn");
+
+    const searchInput = document.getElementById("searchInput");
+    const chips = document.querySelectorAll(".chip");
+
+    const addProjectBtn = document.getElementById("addProjectBtn");
+    const deleteProjectBtn = document.getElementById("deleteProjectBtn");
+
+    const secTitleEl = document.getElementById("secTitle");
+    const countHintEl = document.getElementById("countHint");
+    const footerStatsEl = document.getElementById("footerStats");
+
+    // Mobile drawer controls
+    const menuBtn = document.getElementById("menuBtn");
+    const sidebar = document.querySelector(".sidebar");
+    const backdrop = document.getElementById("backdrop");
+
+    function matchMobile(){ return window.matchMedia("(max-width: 920px)").matches; }
+
+    function openMenu(){
+      sidebar.classList.add("open");
+      backdrop.classList.add("show");
+      document.body.classList.add("menu-open");
+    }
+    function closeMenu(){
+      sidebar.classList.remove("open");
+      backdrop.classList.remove("show");
+      document.body.classList.remove("menu-open");
+    }
+
+    menuBtn.addEventListener("click", () => {
+      sidebar.classList.contains("open") ? closeMenu() : openMenu();
+    });
+    backdrop.addEventListener("click", closeMenu);
+
+    // Init
+    renderAll();
+
+    // Events
+    addTaskBtn.addEventListener("click", addTask);
+    taskInput.addEventListener("keydown", (e) => { if (e.key === "Enter") addTask(); });
+
+    clearDoneBtn.addEventListener("click", () => {
+      state.tasks = state.tasks.filter(t => !t.done);
+      persist();
+      renderAll();
+    });
+
+    searchInput.addEventListener("input", (e) => {
+      state.search = e.target.value.trim().toLowerCase();
+      persist();
+      renderTasks();
+      renderSidebarCounts();
+    });
+
+    chips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        state.filter = chip.dataset.filter;
+        chips.forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        persist();
+        renderTasks();
+      });
+    });
+
+    addProjectBtn.addEventListener("click", () => {
+      const name = prompt("Proje adı:");
+      if (!name) return;
+      const n = name.trim();
+      if (!n) return;
+      state.projects.push({ id: uuid(), name: n, fixed: false });
+      persist();
+      renderAll();
+      if (matchMobile()) closeMenu();
+    });
+
+    deleteProjectBtn.addEventListener("click", () => {
+      const pid = state.selectedProjectId;
+      const p = state.projects.find(x => x.id === pid);
+      if (!p || p.fixed) return alert("Inbox gibi sabit projeler silinemez.");
+      if (!confirm(`"${p.name}" projesini silmek istiyor musun? (Görevler de silinir)`)) return;
+
+      state.tasks = state.tasks.filter(t => t.projectId !== pid);
+      state.projects = state.projects.filter(x => x.id !== pid);
+      state.selectedProjectId = "inbox";
+      state.viewMode = "project";
+      persist();
+      renderAll();
+      if (matchMobile()) closeMenu();
+    });
+
+    // Views
+    function views() {
+      return [
+        { id:"today", name:"Today", icon:"📅" },
+        { id:"upcoming", name:"Upcoming", icon:"⏳" },
+        { id:"project", name:"Projects", icon:"🗂️" },
+      ];
+    }
+
+    function renderAll() {
+      renderViews();
+      renderProjects();
+      renderHeader();
+      renderTasks();
+      renderSidebarCounts();
+    }
+
+    function renderViews() {
+      viewListEl.innerHTML = "";
+      views().forEach(v => {
+        const count = countForView(v.id);
+        const row = document.createElement("div");
+        row.className = "sb-item " + (state.viewMode === v.id ? "active" : "");
+        row.innerHTML = `
+          <div style="display:flex; align-items:center; gap:10px">
+            <span style="width:22px; text-align:center">${v.icon}</span>
+            <span style="font-weight:900">${v.name}</span>
+          </div>
+          <span class="pill">${count}</span>
+        `;
+        row.addEventListener("click", () => {
+          state.viewMode = v.id;
+          if (v.id !== "project") state.selectedProjectId = "inbox";
+          persist();
+          renderAll();
+          if (matchMobile()) closeMenu();
+        });
+        viewListEl.appendChild(row);
+      });
+    }
+
+    function renderProjects() {
+      projectListEl.innerHTML = "";
+      state.projects.forEach(p => {
+        const count = state.tasks.filter(t => t.projectId === p.id && !t.done).length;
+        const isActive = (state.viewMode === "project" && state.selectedProjectId === p.id);
+        const row = document.createElement("div");
+        row.className = "sb-item " + (isActive ? "active" : "");
+        row.innerHTML = `
+          <div style="display:flex; align-items:center; gap:10px">
+            <span style="width:22px; text-align:center">#</span>
+            <span style="font-weight:900">${escapeHtml(p.name)}</span>
+          </div>
+          <span class="pill">${count}</span>
+        `;
+        row.addEventListener("click", () => {
+          state.viewMode = "project";
+          state.selectedProjectId = p.id;
+          persist();
+          renderAll();
+          if (matchMobile()) closeMenu();
+        });
+        projectListEl.appendChild(row);
+      });
+    }
+
+    function renderHeader() {
+      if (state.viewMode === "today") {
+        mainTitleEl.textContent = "Today";
+        mainSubtitleEl.textContent = "Bugün tarihli görevler";
+        secTitleEl.textContent = "Bugün";
+      } else if (state.viewMode === "upcoming") {
+        mainTitleEl.textContent = "Upcoming";
+        mainSubtitleEl.textContent = "Yaklaşan görevler (tarihli)";
+        secTitleEl.textContent = "Yaklaşanlar";
+      } else {
+        const p = state.projects.find(x => x.id === state.selectedProjectId) || state.projects[0];
+        mainTitleEl.textContent = p?.name ?? "Inbox";
+        mainSubtitleEl.textContent = "Proje görevleri";
+        secTitleEl.textContent = "Görevler";
+      }
+    }
+
+    function renderTasks() {
+      taskListEl.innerHTML = "";
+      const tasks = getVisibleTasks();
+
+      tasks.forEach(t => {
+        const li = document.createElement("li");
+        li.className = "task " + (t.done ? "done" : "");
+
+        const projectName = (state.projects.find(p => p.id === t.projectId)?.name) || "Inbox";
+        const dueText = t.due ? formatDate(t.due) : null;
+
+        li.innerHTML = `
+          <input class="check" type="checkbox" ${t.done ? "checked" : ""} />
+          <div class="task-mid">
+            <p class="task-title">${escapeHtml(t.title)}</p>
+            <div class="meta">
+              <span class="tag"># ${escapeHtml(projectName)}</span>
+              <span class="tag">📌 ${escapeHtml(t.section)}</span>
+              ${dueText ? `<span class="tag">📅 ${escapeHtml(dueText)}</span>` : ""}
+            </div>
+          </div>
+          <div class="task-actions">
+            <button class="iconBtn" type="button">Düzenle</button>
+            <button class="iconBtn" type="button">Sil</button>
+          </div>
+        `;
+
+        const checkbox = li.querySelector(".check");
+        const [editBtn, delBtn] = li.querySelectorAll(".iconBtn");
+
+        checkbox.addEventListener("change", () => {
+          t.done = !t.done;
+          persist();
+          renderAll();
+        });
+
+        editBtn.addEventListener("click", () => {
+          const next = prompt("Görevi düzenle:", t.title);
+          if (next === null) return;
+          const v = next.trim();
+          if (!v) return;
+          t.title = v;
+          persist();
+          renderAll();
+        });
+
+        delBtn.addEventListener("click", () => {
+          state.tasks = state.tasks.filter(x => x.id !== t.id);
+          persist();
+          renderAll();
+        });
+
+        taskListEl.appendChild(li);
+      });
+
+      countHintEl.textContent = `${tasks.length} görev`;
+      renderFooterStats();
+    }
+
+    function addTask() {
+      const title = taskInput.value.trim();
+      if (!title) return;
+
+      const projectId = (state.viewMode === "project") ? state.selectedProjectId : "inbox";
+
+      state.tasks.unshift({
+        id: uuid(),
+        title,
+        done: false,
+        projectId,
+        section: sectionSelect.value,
+        due: dueInput.value || null,
+        createdAt: Date.now()
+      });
+
+      taskInput.value = "";
+      dueInput.value = "";
+      persist();
+      renderAll();
+    }
+
+    function getVisibleTasks() {
+      let arr = [...state.tasks];
+
+      if (state.viewMode === "today") {
+        const today = toISODate(new Date());
+        arr = arr.filter(t => t.due === today);
+      } else if (state.viewMode === "upcoming") {
+        arr = arr.filter(t => !!t.due);
+        arr.sort((a,b) => (a.due || "").localeCompare(b.due || ""));
+      } else {
+        arr = arr.filter(t => t.projectId === state.selectedProjectId);
+      }
+
+      if (state.search) arr = arr.filter(t => t.title.toLowerCase().includes(state.search));
+      if (state.filter === "active") arr = arr.filter(t => !t.done);
+      if (state.filter === "done") arr = arr.filter(t => t.done);
+
+      return arr;
+    }
+
+    function renderSidebarCounts() {
+      sbTotalEl.textContent = String(state.tasks.filter(t => !t.done).length);
+    }
+
+    function renderFooterStats() {
+      const total = state.tasks.length;
+      const done = state.tasks.filter(t => t.done).length;
+      const active = total - done;
+      footerStatsEl.textContent = `${total} toplam • ${active} aktif • ${done} tamam`;
+    }
+
+    function countForView(viewId) {
+      if (viewId === "project") return state.projects.length;
+      if (viewId === "today") {
+        const today = toISODate(new Date());
+        return state.tasks.filter(t => t.due === today && !t.done).length;
+      }
+      if (viewId === "upcoming") {
+        return state.tasks.filter(t => t.due && !t.done).length;
+      }
+      return 0;
+    }
+
+    function persist() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    }
+
+    function toISODate(d){
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,"0");
+      const day = String(d.getDate()).padStart(2,"0");
+      return `${y}-${m}-${day}`;
+    }
+    function formatDate(iso){
+      const [y,m,d] = iso.split("-");
+      return `${d}.${m}.${y}`;
+    }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+</script>
+</body>
+</html>
